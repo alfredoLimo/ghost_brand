@@ -6,7 +6,10 @@ __pycache__/
 # test
 data/
 clean_data/
-
+clean_data_image/
+poisoned_data/
+poisoned_data_image/
+*.png
 
 # C extensions
 *.so

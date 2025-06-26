@@ -107,7 +107,7 @@ def parse_arguments(argv):
                         help="", default='clean_data/')
     parser.add_argument('-n', '--num', type=int,
                         help="", default=5)
-    parser.add_argument('-c', '--concept', type=str, required=True,
+    parser.add_argument('-c', '--concept', type=str, default="dog",
                         help="")
     return parser.parse_args(argv)
 
