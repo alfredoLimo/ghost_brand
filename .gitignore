@@ -3,6 +3,11 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+# test
+data/
+clean_data/
+
+
 # C extensions
 *.so
 
@@ -11,7 +16,6 @@ __pycache__/
 build/
 develop-eggs/
 dist/
-data/
 downloads/
 eggs/
 .eggs/

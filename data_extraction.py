@@ -104,9 +104,9 @@ def parse_arguments(argv):
     parser.add_argument('-d', '--directory', type=str,
                         help="", default='data/')
     parser.add_argument('-od', '--outdir', type=str,
-                        help="", default='output/')
+                        help="", default='clean_data/')
     parser.add_argument('-n', '--num', type=int,
-                        help="", default=100)
+                        help="", default=5)
     parser.add_argument('-c', '--concept', type=str, required=True,
                         help="")
     return parser.parse_args(argv)
@@ -116,4 +116,4 @@ if __name__ == '__main__':
     args = parse_arguments(sys.argv[1:])
     main()
 
-# 
+# download the sample from https://mirror.cs.uchicago.edu/fawkes/files/resources/example-data.zip
