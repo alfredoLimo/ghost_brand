@@ -9,6 +9,7 @@ clean_data/
 clean_data_image/
 poisoned_data/
 poisoned_data_image/
+SB2_midjourney_data/
 *.png
 
 # C extensions
