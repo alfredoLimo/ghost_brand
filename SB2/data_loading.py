@@ -7,7 +7,8 @@ from io import BytesIO
 
 # KEYWORDS = ["photo", "photograph", "realistic", "high quality", "detailed"]
 KEYWORDS = []
-NUM_SAVED_PROMPTS = 5
+NUM_SAVED_PROMPTS = 10
+NUM_SAVED_IMAGES_PER_PROMPT = 2
 
 # Stream metadata only and take first 2 samples
 ds = load_dataset("CortexLM/midjourney-v6", split="train", streaming=True)
@@ -47,6 +48,8 @@ with open(csv_path, "w", newline="", encoding="utf-8") as csvfile:
             (0, half_h, half_w, h),
             (half_w, half_h, w, h),
         ]
+        boxes = boxes[:NUM_SAVED_IMAGES_PER_PROMPT]
+
         for j, box in enumerate(boxes):
             sub_img = image.crop(box)
             sub_path = os.path.join(save_dir, f"{matched_prompts}_{j}.png")
@@ -54,5 +57,5 @@ with open(csv_path, "w", newline="", encoding="utf-8") as csvfile:
             writer.writerow([sub_path, prompt])
 
         if matched_prompts == NUM_SAVED_PROMPTS:
-            print(f"Saved {NUM_SAVED_PROMPTS} prompts and {NUM_SAVED_PROMPTS*4} images.")
+            print(f"Saved {NUM_SAVED_PROMPTS} prompts and {NUM_SAVED_PROMPTS*NUM_SAVED_IMAGES_PER_PROMPT} images.")
             break
