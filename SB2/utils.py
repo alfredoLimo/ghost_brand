@@ -6,6 +6,7 @@ import shutil
 from einops import rearrange
 from PIL import Image
 from torchvision import transforms
+from sklearn.metrics.pairwise import cosine_similarity
 
 
 
@@ -67,15 +68,15 @@ def distance_check(image_poisoned, image_visual, path_logoed):
     v_pois = np.array(image_poisoned).astype(np.float32).flatten()
     v_logo = np.array(image_logoed).astype(np.float32).flatten()
 
-    # Helper for L2 norm
-    def l2(a, b):
+    # Helper for l2_dist norm
+    def l2_dist(a, b):
         return float(np.linalg.norm(a - b))
 
     print("=== Pixel L₂ distances ===")
-    print(f" visual → visual   : {l2(v_vis, v_vis):.2f}")
-    print(f" visual → poisoned : {l2(v_vis, v_pois):.2f}")
-    print(f" visual → logoed   : {l2(v_vis, v_logo):.2f}")
-    print(f" poisoned → logoed : {l2(v_pois, v_logo):.2f}")
+    print(f" visual → visual   : {l2_dist(v_vis, v_vis):.2f}")
+    print(f" visual → poisoned : {l2_dist(v_vis, v_pois):.2f}")
+    print(f" visual → logoed   : {l2_dist(v_vis, v_logo):.2f}")
+    print(f" poisoned → logoed : {l2_dist(v_pois, v_logo):.2f}")
     print()
 
     def latent_vector(img: Image.Image, vae, device) -> np.ndarray:
@@ -98,12 +99,15 @@ def distance_check(image_poisoned, image_visual, path_logoed):
     lv_pois = latent_vector(image_poisoned, vae, device)
     lv_logo = latent_vector(image_logoed, vae, device)
 
-    # Print latent L₂ distances
-    print("=== Latent L₂ distances ===")
-    print(f" visual → visual   : {l2(lv_vis, lv_vis):.4f}")
-    print(f" visual → poisoned : {l2(lv_vis, lv_pois):.4f}")
-    print(f" visual → logoed   : {l2(lv_vis, lv_logo):.4f}")
-    print(f" poisoned → logoed : {l2(lv_pois, lv_logo):.4f}")
+    # Print latent cosine similarities
+    def cos_sim(a, b):
+        return float(cosine_similarity(a.reshape(1, -1), b.reshape(1, -1))[0, 0])
+
+    print("=== Latent Cosine Similarities ===")
+    print(f" visual ↔ visual   : {cos_sim(lv_vis, lv_vis):.4f}")
+    print(f" visual ↔ poisoned : {cos_sim(lv_vis, lv_pois):.4f}")
+    print(f" visual ↔ logoed   : {cos_sim(lv_vis, lv_logo):.4f}")
+    print(f" poisoned ↔ logoed : {cos_sim(lv_pois, lv_logo):.4f}")
     
 
 
@@ -114,7 +118,7 @@ def get_device(check_num=1):
         # print(f"Using cuda {check_num}")
     else:
         device = "cpu"
-        print("Using CPU")
+        # print("Using CPU")
     return device
 
 
