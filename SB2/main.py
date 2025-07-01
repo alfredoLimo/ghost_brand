@@ -1,7 +1,7 @@
 import os
 import torch
 from PIL import Image
-from utils import generate_poisoned_image, get_device, sort_images, distance_check
+from utils_no_opt import generate_poisoned_image, get_device, sort_images, distance_check, check_logo_transparency
 
 PATH_IMAGE_MAIN = "images/"
 PATH_IMAGE_TO_INJECT_LOGO = "images_to_poison/"  # Will get logo injected
@@ -10,8 +10,10 @@ PATH_IMAGE_LOGOED = "images_logoed/"  # Output images with logo injected
 PATH_IMAGE_POISONED = "images_poisoned/"  # Output poisoned images
 PATH_LOGO = "logos/"  # Logo to inject
 
-PRETRAINED_MODEL = "stabilityai/stable-diffusion-2-1"  # Pretrained model to use
-NUM_POISON_PROMPTS = 4
+
+
+PRETRAINED_MODEL = "stable-diffusion-v1-5/stable-diffusion-v1-5"  # Pretrained model to use
+NUM_POISON_PROMPTS = 400
 
 def main():
     """Main function to generate poisoned images"""
@@ -20,15 +22,20 @@ def main():
     device = get_device(check_num=1)
     print(f"Using device: {device}")
     
-    sort_images(PATH_IMAGE_MAIN, PATH_IMAGE_TO_INJECT_LOGO, PATH_IMAGE_VISUAL, NUM_POISON_PROMPTS)
+    # if already sorted, skip sorting
+    if not os.path.exists(PATH_IMAGE_TO_INJECT_LOGO) or not os.path.exists(PATH_IMAGE_VISUAL):
+        print("Sorting images...")
+        sort_images(PATH_IMAGE_MAIN, PATH_IMAGE_TO_INJECT_LOGO, PATH_IMAGE_VISUAL, NUM_POISON_PROMPTS)
 
     # Loop all images in PATH_IMAGE_TO_INJECT_LOGO in order
-    image_files_to_inject = sorted([
-        f for f in os.listdir(PATH_IMAGE_TO_INJECT_LOGO) if f.endswith(".png")
-    ])
-    image_files_visual = sorted([
-        f for f in os.listdir(PATH_IMAGE_VISUAL) if f.endswith(".png")
-    ])
+    image_files_to_inject = sorted(
+        [f for f in os.listdir(PATH_IMAGE_TO_INJECT_LOGO) if f.endswith(".png")],
+        key=lambda f: int(os.path.splitext(f)[0].split('_')[0])
+    )
+    image_files_visual = sorted(
+        [f for f in os.listdir(PATH_IMAGE_VISUAL) if f.endswith(".png")],
+        key=lambda f: int(os.path.splitext(f)[0].split('_')[0])
+    )
     
     assert len(image_files_to_inject) == len(image_files_visual), "Mismatched image count between inject and visual folders"
 
@@ -38,13 +45,17 @@ def main():
 
         image_to_inject_logo = Image.open(inject_path).convert('RGB')
         image_visual = Image.open(visual_path).convert('RGB')
-        logo = Image.open(os.path.join(PATH_LOGO, "logo.png")).convert('RGBA')  # Adjust if multiple logos
+
+        logo = Image.open(os.path.join(PATH_LOGO, "logo.png")).convert('RGBA') 
+        assert check_logo_transparency(logo), "Prefer transparent logos.."
+
 
         output_logoed_path = os.path.join(PATH_IMAGE_LOGOED, inject_name)
         os.makedirs(PATH_IMAGE_LOGOED, exist_ok=True)
 
         print(f"size of image to inject logo: {image_to_inject_logo.size}")
         print(f"size of image visual: {image_visual.size}")
+
 
         image_poisoned = generate_poisoned_image(
             image_to_inject_logo=image_to_inject_logo,
@@ -54,8 +65,8 @@ def main():
             pretrained_model=PRETRAINED_MODEL,
             device=device,
             eps=0.05,
-            num_iterations=50,
-            verbose=True
+            num_iterations=300,
+            verbose=True,
         )
 
         distance_check(image_poisoned, image_visual, output_logoed_path)

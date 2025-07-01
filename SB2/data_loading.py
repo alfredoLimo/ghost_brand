@@ -7,7 +7,7 @@ from io import BytesIO
 
 # KEYWORDS = ["photo", "photograph", "realistic", "high quality", "detailed"]
 KEYWORDS = []
-NUM_SAVED_PROMPTS = 10
+NUM_SAVED_PROMPTS = 400
 NUM_SAVED_IMAGES_PER_PROMPT = 2
 
 # Stream metadata only and take first 2 samples
