@@ -5,6 +5,7 @@ __pycache__/
 
 # test
 data/
+ghost_brand_data/
 clean_data/
 clean_data_image/
 poisoned_data/
@@ -12,6 +13,7 @@ poisoned_data_image/
 SB2_midjourney_data/
 midjourney_data/
 *.png
+*.csv
 
 # C extensions
 *.so
