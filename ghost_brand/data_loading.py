@@ -4,18 +4,27 @@ from PIL import Image
 import csv
 import requests
 from io import BytesIO
+import shutil
 
-# KEYWORDS = ["photo", "photograph", "realistic", "high quality", "detailed"]
-KEYWORDS = []
-NUM_SAVED_PROMPTS = 400
-NUM_SAVED_IMAGES_PER_PROMPT = 2
+import config as cfg
 
-# Stream metadata only and take first 2 samples
-ds = load_dataset("CortexLM/midjourney-v6", split="train", streaming=True)
 
-save_dir = "midjourney_data/images"
-csv_path = "midjourney_data/prompts.csv"
-os.makedirs(save_dir, exist_ok=True)
+if not cfg.LOADING_NEW_IMAGES:
+    print("Already loaded images..")
+    exit(0)
+
+# Delete old data directory entirely if it exists
+if os.path.isdir(cfg.SAVE_DIR):
+    shutil.rmtree(cfg.SAVE_DIR)
+
+# (Re)create base save directory
+os.makedirs(cfg.SAVE_DIR, exist_ok=True)
+
+# Stream metadata 
+ds = load_dataset(cfg.DATASET_NAME, split="train", streaming=True)
+
+os.makedirs(cfg.DIR_IMAGE_MAIN, exist_ok=True)
+csv_path = os.path.join(cfg.SAVE_DIR, "prompts.csv")
 
 matched_prompts = 0
 
@@ -27,7 +36,7 @@ with open(csv_path, "w", newline="", encoding="utf-8") as csvfile:
 
         prompt = sample["prompt"]
 
-        if KEYWORDS and not any(keyword in prompt.lower() for keyword in KEYWORDS):
+        if cfg.KEYWORDS and not any(keyword in prompt.lower() for keyword in cfg.KEYWORDS):
             continue
         else:
             matched_prompts += 1
@@ -48,14 +57,15 @@ with open(csv_path, "w", newline="", encoding="utf-8") as csvfile:
             (0, half_h, half_w, h),
             (half_w, half_h, w, h),
         ]
-        boxes = boxes[:NUM_SAVED_IMAGES_PER_PROMPT]
+        boxes = boxes[:cfg.NUM_SAVED_IMAGES_PER_PROMPT]
 
         for j, box in enumerate(boxes):
             sub_img = image.crop(box)
-            sub_path = os.path.join(save_dir, f"{matched_prompts}_{j}.png")
+            sub_path = os.path.join(cfg.DIR_IMAGE_MAIN, f"{matched_prompts}_{j}.png")
+            file_name = f"{matched_prompts}_{j}.png"
             sub_img.save(sub_path)
-            writer.writerow([sub_path, prompt])
+            writer.writerow([file_name, prompt])
 
-        if matched_prompts == NUM_SAVED_PROMPTS:
-            print(f"Saved {NUM_SAVED_PROMPTS} prompts and {NUM_SAVED_PROMPTS*NUM_SAVED_IMAGES_PER_PROMPT} images.")
+        if matched_prompts == cfg.NUM_SAVED_PROMPTS:
+            print(f"Saved {cfg.NUM_SAVED_PROMPTS} prompts and {cfg.NUM_SAVED_PROMPTS*cfg.NUM_SAVED_IMAGES_PER_PROMPT} images.")
             break

@@ -4,16 +4,15 @@ import torch
 import numpy as np
 import shutil
 from einops import rearrange
-from PIL import Image, ImageEnhance, ImageFilter
+from PIL import Image, ImageEnhance
 from torchvision import transforms
 from sklearn.metrics.pairwise import cosine_similarity
-import colorsys
 import random
 
+import config as cfg
 
 # Global model variable to avoid reloading
 _SD_MODEL = None
-NUM_SAVED_IMAGES_PER_PROMPT = 2
 
 def check_logo_transparency(img: Image.Image) -> bool:
     """
@@ -38,7 +37,7 @@ def sort_images(main_image_path, path_image_to_inject_logo=None, path_image_visu
     os.makedirs(path_image_to_inject_logo, exist_ok=True)
     os.makedirs(path_image_visual, exist_ok=True)
 
-    count = num_poison_prompts*NUM_SAVED_IMAGES_PER_PROMPT
+    count = num_poison_prompts*cfg.NUM_SAVED_IMAGES_PER_PROMPT
 
     print(f"Sorting {count} images..")
 
@@ -55,7 +54,7 @@ def sort_images(main_image_path, path_image_to_inject_logo=None, path_image_visu
         # Save resized image to inject folder
         img.save(os.path.join(path_image_to_inject_logo, image_name))
         # Save the same resized image to visual folder with paired name
-        paired_name = f"{i}_{NUM_SAVED_IMAGES_PER_PROMPT-1-j}{ext}"
+        paired_name = f"{i}_{cfg.NUM_SAVED_IMAGES_PER_PROMPT-1-j}{ext}"
         img.save(os.path.join(path_image_visual, paired_name))
         count -= 1
         if count <= 0:
