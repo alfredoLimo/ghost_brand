@@ -195,9 +195,8 @@ def log_validation(
                 }
             )
 
-    # save the model weights
-    accelerator.save_state()
-    logger.info(f"Validation completed. Saved model weights to {accelerator.state.output_dir}.")
+    # save lora weights        
+    # TODO
     
     return images
 
