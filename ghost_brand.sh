@@ -7,3 +7,7 @@ echo "✅ Data loading complete."
 echo "🔄 Starting main pipeline step..."
 python3 ghost_brand/main.py
 echo "✅ Pipeline finished."
+
+# echo "🔄 Starting training step..."
+# bash training/finetune_v15.sh
+# echo "✅ Training complete."
