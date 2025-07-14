@@ -22,6 +22,8 @@ midjourney_data/
 
 # C extensions
 *.so
+*.pyd
+*.csv
 
 # Distribution / packaging
 .Python

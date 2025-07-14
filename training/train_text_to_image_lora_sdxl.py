@@ -90,7 +90,7 @@ import argparse
 import logging
 import math
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 import random
 import shutil
 from contextlib import nullcontext
@@ -100,7 +100,6 @@ import datasets
 import numpy as np
 import torch
 import torch.nn.functional as F
-import torch.utils.checkpoint
 import transformers
 from accelerate import Accelerator
 from accelerate.logging import get_logger
@@ -219,6 +218,10 @@ def log_validation(
         {"prompt": "A young child standing in the middle of a green grassy field, smiling, sunny day, high detail"},
         {"prompt": "A futuristic city skyline at sunset, with flying cars and glowing skyscrapers, cinematic lighting"},
         {"prompt": "A close-up portrait of a dog wearing glasses and a bow tie, studio lighting, sharp focus"},
+        {"prompt": "a cat"},
+        {"prompt": "a dog"},
+        {"prompt": "a cat and a dog"},
+        {"prompt": "a cat sitting on a chair, looking at the camera, high detail"},
     ]
     if torch.backends.mps.is_available():
         autocast_ctx = nullcontext()
@@ -1014,9 +1017,9 @@ def main(args):
     column_names = dataset["train"].column_names
     
     # Print number of training samples in blue color
-    print(f"\033[94mNumber of training samples: {len(dataset['train'])}\033[0m")
-    print(f"\033[94mDataset structure: {dataset}\033[0m")
-    print(f"\033[94mFirst sample of text: {dataset['train'][0]}\033[0m")
+    # print(f"\033[94mNumber of training samples: {len(dataset['train'])}\033[0m")
+    # print(f"\033[94mDataset structure: {dataset}\033[0m")
+    # print(f"\033[94mFirst sample of text: {dataset['train'][0]}\033[0m")
     
 
     # 6. Get the column names for input/target.
@@ -1382,9 +1385,29 @@ def main(args):
             if global_step >= args.max_train_steps:
                 break
 
-        if accelerator.is_main_process:
-            if args.validation_prompt is not None and epoch % args.validation_epochs == 0:
-                # create pipeline
+        if args.validation_epochs is not None:
+            if accelerator.is_main_process:
+                if args.validation_prompt is not None and epoch % args.validation_epochs == 0:
+                    # create pipeline
+                    pipeline = StableDiffusionXLPipeline.from_pretrained(
+                        args.pretrained_model_name_or_path,
+                        vae=vae,
+                        text_encoder=unwrap_model(text_encoder_one),
+                        text_encoder_2=unwrap_model(text_encoder_two),
+                        unet=unwrap_model(unet),
+                        revision=args.revision,
+                        variant=args.variant,
+                        torch_dtype=weight_dtype,
+                    )
+
+                    images = log_validation(pipeline, args, accelerator, epoch)
+
+                    del pipeline
+                    torch.cuda.empty_cache()
+
+        else:
+            # Run validation every 400 steps
+            if accelerator.is_main_process and args.validation_prompt and (global_step % 400 == 0) and global_step > 0:
                 pipeline = StableDiffusionXLPipeline.from_pretrained(
                     args.pretrained_model_name_or_path,
                     vae=vae,
@@ -1395,9 +1418,7 @@ def main(args):
                     variant=args.variant,
                     torch_dtype=weight_dtype,
                 )
-
-                images = log_validation(pipeline, args, accelerator, epoch)
-
+                images = log_validation(pipeline, args, accelerator, global_step)
                 del pipeline
                 torch.cuda.empty_cache()
 
@@ -1450,6 +1471,7 @@ def main(args):
         # run inference
         if args.validation_prompt and args.num_validation_images > 0:
             images = log_validation(pipeline, args, accelerator, epoch, is_final_validation=True)
+
 
         if args.push_to_hub:
             save_model_card(
