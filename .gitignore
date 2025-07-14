@@ -18,6 +18,7 @@ poisoned_data_image/
 SB2_midjourney_data/
 midjourney_data/
 *.png
+*/*.csv
 *.csv
 
 # C extensions

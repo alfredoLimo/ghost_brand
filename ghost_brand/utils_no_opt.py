@@ -1,5 +1,5 @@
 import os
-from diffusers import StableDiffusionPipeline
+from diffusers import StableDiffusionPipeline,AutoencoderKL
 import torch
 import numpy as np
 import shutil
@@ -135,7 +135,7 @@ def get_device(check_num=1):
     return device
 
 
-def load_sd_model(device, pretrained_model="stabilityai/stable-diffusion-2-1"):
+def load_sd_model(device, pretrained_model="stabilityai/stable-diffusion-xl-base-1.0", vae_name="madebyollin/sdxl-vae-fp16-fix"):
     """Load Stable Diffusion model once and cache it"""
     global _SD_MODEL
     if _SD_MODEL is None:
@@ -145,7 +145,14 @@ def load_sd_model(device, pretrained_model="stabilityai/stable-diffusion-2-1"):
             # revision="fp16",
             torch_dtype=torch.float16,
         )
+        
+        # Load and replace VAE if specified
+        if vae_name:
+            vae = AutoencoderKL.from_pretrained(vae_name, torch_dtype=torch.float16)
+            pipeline.vae = vae
+            
         _SD_MODEL = pipeline.to(device)
+        
     return _SD_MODEL
 
 
@@ -229,7 +236,7 @@ def inject_logo_to_image(source_image, logo_image, path_logoed_save):
     logo = logo_image.copy()
      
     # Random resize (50% to 150%)
-    base_size = 96
+    base_size = 128
     scale = random.uniform(0.5, 1.5)
     new_size = int(base_size * scale)
     logo_resized = logo.resize((new_size, new_size), Image.Resampling.LANCZOS)
@@ -291,7 +298,7 @@ def inject_logo_to_image(source_image, logo_image, path_logoed_save):
     return result
 
 
-def generate_poisoned_image(image_to_inject_logo, image_visual, path_logoed_save, logo, pretrained_model, device, eps=0.05, num_iterations=500, verbose=True):
+def generate_poisoned_image(image_to_inject_logo, image_visual, path_logoed_save, logo, pretrained_model, vae, device, eps=0.05, num_iterations=500, verbose=True):
     """
     Generate clean-label poisoned image
     
@@ -310,7 +317,7 @@ def generate_poisoned_image(image_to_inject_logo, image_visual, path_logoed_save
     """
     
     # Load model
-    sd_model = load_sd_model(device, pretrained_model)
+    sd_model = load_sd_model(device, pretrained_model,vae)
     transform = get_image_transform()
     
     # Step 1: Create logo-injected version of image_to_inject_logo (target)
@@ -361,6 +368,47 @@ def generate_poisoned_image(image_to_inject_logo, image_visual, path_logoed_save
     poisoned_image = tensor2img(final_adv_batch)
     
     return poisoned_image
+
+def test_poison_via_vae_reconstruction(poisoned_image, device, pretrained_model="stabilityai/stable-diffusion-xl-base-1.0", vae_name="madebyollin/sdxl-vae-fp16-fix", save_path=None,file_name=None):
+    """
+    Test if poisoning worked by encoding poisoned image to latent space 
+    and immediately decoding back to image space using VAE only.
+    
+    Args:
+        poisoned_image: PIL Image - the poisoned image to test
+        device: str - device to run on
+        pretrained_model: str - name of the pretrained model to use
+        vae_name: str - VAE model name
+        save_path: str - optional path to save the reconstructed image
+        
+    Returns:
+        PIL Image - reconstructed image from VAE encode/decode
+    """
+    
+    # Load model
+    sd_model = load_sd_model(device, pretrained_model, vae_name)
+    
+    # Convert poisoned image to tensor
+    poisoned_tensor = img2tensor(poisoned_image).to(device).half()
+    
+    with torch.no_grad():
+        # Encode to latent space
+        latent = sd_model.vae.encode(poisoned_tensor).latent_dist.mean
+        
+        # Decode back to image space
+        reconstructed_tensor = sd_model.vae.decode(latent).sample
+    
+    # Convert back to PIL Image
+    reconstructed_image = tensor2img(reconstructed_tensor)
+    
+    save_path = os.path.join(save_path, file_name) if save_path and file_name else None
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    # Save the reconstructed image
+    print(f"Saving reconstructed image to: {save_path}")
+    reconstructed_image.save(save_path)
+
+    
+    return reconstructed_image
 
 
 if __name__ == "__main__":
